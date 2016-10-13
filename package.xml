@@ -1,0 +1,8 @@
+<package name="busDriver">
+	<run>
+		<command name="busDriver" class="iristk.app.busDriver.BusDriverSystem"/>
+	</run>
+	<classpath>
+		<src path="src" output="bin"/>
+	</classpath>
+</package>

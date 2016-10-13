@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<flow name="BusDriverFlow" package="iristk.app.busDriver"
+    initial="Start" xmlns="iristk.flow" xmlns:p="iristk.flow.param" xmlns:dialog="iristk.flow.DialogFlow" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="iristk.flow flow.xsd iristk.flow.DialogFlow DialogFlow.xsd">
+	
+	<import class="java.util.concurrent.Callable"/>
+	<param name="nextStop" type="Callable"/>    
+    <var name="order" type="Record" value="new Record()"/>
+
+    <state id="Start" extends="Dialog">
+        <onentry>
+            <dialog:say>Howdy, welcome to the robot bus!</dialog:say>
+            <dialog:prompt>How can I help?</dialog:prompt>
+            <reentry/>
+        </onentry>
+        
+    </state>
+
+    <state id="Dialog">
+        <onevent name="sense.user.speak" cond="event?:sem:order">
+        	<exec>
+        		order.adjoin(asRecord(event:sem:order));
+        	</exec>
+        	<goto state="CheckOrder"/>
+       	</onevent>
+        <onevent name="sense.user.speak" cond="event?:sem:nextStop">
+            <dialog:say>The next stop is <expr>getNextStop().call()</expr></dialog:say>
+        </onevent>
+		<onevent name="sense.user.speak" cond="event?:sem:stopsAt">
+            <if cond="asString(event:sem:stopsAt) == 'yes' &amp;&amp; asDouble(event:conf) &gt; 0.7">
+            	<!--  Arbritrary set boundary, we want to avoid mapping everything to one of the listed stops.. -->
+            	<dialog:say>Yes</dialog:say>
+           	<else/>
+           		<dialog:say>No</dialog:say>
+            </if>
+        </onevent>
+        <onevent name="sense.user.speak" cond="event?:sem:numbers">
+        	<!-- Why can't this be moved to the RequestQuantity state? 
+        	It seems not to be picked up. Having it here means that a user can 
+        	start saying just "five" and then jump to the CheckOrder state 
+        	which is not ideal.. -->
+			<exec>order:tickets = event:sem:numbers</exec>
+			<goto state="CheckOrder"/>
+		</onevent>    
+        <onevent name="sense.user.speak" cond="event?:sem:exit">
+        	<goto state="Exit"/>
+        </onevent>
+        <onevent name="sense.user.speak">
+            <dialog:say>Sorry, I didn't get that. You can ask about tickets or stops.</dialog:say>
+            <reentry/>
+        </onevent>
+        <onevent name="sense.user.silence">
+            <dialog:say>Sorry, I didn't hear anything</dialog:say>
+            <reentry/>
+        </onevent>
+    </state>
+
+	<state id="CheckOrder">
+		<onentry>
+		    <log><expr>order.toStringIndent()</expr></log>
+			<if cond="!order?:destination">
+				<goto state="RequestDestination"/>
+			</if>
+			<if cond="asInteger(order:tickets) == 0">
+				<goto state="RequestQuantity"/>
+			</if>
+			<goto state="Pay"/>
+		</onentry>
+	</state>
+	
+	<state id="RequestDestination" extends="Dialog">
+		<onentry>
+			<dialog:prompt>Where do you want to go?</dialog:prompt>
+			<goto state="CheckOrder"/>
+		</onentry>
+	</state>
+	
+	<state id="RequestQuantity" extends="Dialog">
+		<onentry>
+			<dialog:prompt>How many tickets do you want?</dialog:prompt>
+			<goto state="CheckOrder"/>
+		</onentry>
+	</state>
+    
+    <state id="Pay">
+        <onentry>
+			<dialog:say> 
+				Please pay in the counter over there. It will be 
+				<expr>asInteger(order:tickets) * 50</expr> 
+				kronor for <expr>asInteger(order:tickets)</expr> 
+				tickets to <expr>asString(order:destination)</expr>
+			</dialog:say>
+			<dialog:say>Enjoy the ride!</dialog:say>
+			<exec>
+				order = new Record();
+			</exec>
+			<goto state="Start"/>
+        </onentry>
+    </state>
+
+    <state id="Exit">
+        <onentry>
+            <dialog:say>Byebye</dialog:say>
+            <exec>System.exit(0)</exec>
+        </onentry>
+    </state>
+</flow>
