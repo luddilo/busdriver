@@ -10,7 +10,7 @@
     <state id="Start" extends="Dialog">
         <onentry>
             <dialog:say>Howdy, welcome to the robot bus!</dialog:say>
-            <dialog:prompt>How can I help?</dialog:prompt>
+            <dialog:listen/>
             <reentry/>
         </onentry>
         
@@ -61,7 +61,7 @@
 			<if cond="!order?:destination">
 				<goto state="RequestDestination"/>
 			</if>
-			<if cond="asInteger(order:tickets) == 0">
+			<if cond="!order?:tickets OR asInteger(order:tickets) == 0">
 				<goto state="RequestQuantity"/>
 			</if>
 			<goto state="Pay"/>
